@@ -1,3 +1,5 @@
+var moment = require('moment');
+
 import * as Utils from './utils';
 
 var MongoClient = require('mongodb').MongoClient;
@@ -5,7 +7,6 @@ var Twit        = require('twit');
 var credentials = require('../env.json');
 var errors      = [];
 
-Utils.log("Si funciona no soy tan wey 2");
 
 var T = new Twit({
   consumer_key        : credentials.consumer_key,
@@ -22,39 +23,89 @@ MongoClient.connect(url, function(err, db) {
     throw new Error(err);
   }
 
+  let collection = db.collection('lookup');
 
-  var toSearch = [];
-  var col = db.collection('lookup');
+  collection.find().toArray(function(err, users){
 
-  T.get('followers/ids', function(err, ids, response){
     if (err) {
-      console.error("Error al recuperar ids de usuarios");
+      console.error("Error al recuperar de mongo usuarios :(");
       throw new Error(err);
     }
 
-    var names = ids.ids.slice(0,90).join();
+    var toDelete = []
 
-    T.post('users/lookup',  {user_id:names},function(err, users, response){
-
-      if (err) {
-        console.error("Error al hacer lookup de usuarios");
-        throw new Error(err);
+    users.map(function(obj){
+      if (obj.status && obj.status.text) {
+        var st = obj.status.text;
       }
-
-      col.insertMany(users, function(err, r){
-        if (err) {
-          console.error("Error al insertar en mongo");
-          throw new Error(err);
-        }
-
-        console.info("Insertados :o");
-      });
+      else
+        var st = 'vacio';
+      if (obj.status && obj.status.created_at) {
+        var date = moment(obj.status.created_at)
+      }
+      else
+        var date = moment();
+      // console.log(`User @${obj.screen_name} y su último twit fue: ${moment(date)} `);
+      // console.log(`isBefore :: ${date.isAfter('2015-01-01')}`);
+      // isBefore('yyyy-mm-dd')
+      if(date.isBefore('2015-06-01')) {
+        toDelete.push(obj);
+      }
     });
-
+    console.log(toDelete.length);
+    toDelete.map(function(user){
+      if (user.status && user.status.text) {
+        var st = user.status.text;
+      }
+      else
+        var st = 'vacio';
+      if (user.status && user.status.created_at) {
+        var date = moment(user.status.created_at)
+      }
+      else
+        var date = moment();
+      // console.log(`@${user.screen_name} twiteo por ultima vez el ${date}`);
+    });
   })
 
 
 });
+
+//   var toSearch = [];
+//   var col = db.collection('lookup');
+
+//   T.get('friends/ids', function(err, ids, response){
+//     if (err) {
+//       console.error("Error al recuperar ids de usuarios");
+//       throw new Error(err);
+//     }
+
+//     console.log("ids :: ", ids.ids.length)
+
+//     var names = ids.ids.slice(900,949).join();
+
+
+//     T.post('users/lookup',  {user_id:names},function(err, users, response){
+
+//       if (err) {
+//         console.error("Error al hacer lookup de usuarios");
+//         throw new Error(err);
+//       }
+
+//       col.insertMany(users, function(err, r){
+//         if (err) {
+//           console.error("Error al insertar en mongo");
+//           throw new Error(err);
+//         }
+
+//         console.info("Insertados :o");
+//       });
+//     });
+
+//   })
+
+
+// });
 
 
 
